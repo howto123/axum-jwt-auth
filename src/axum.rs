@@ -221,10 +221,16 @@ where
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let token = E::extract_token(parts).await?;
+        let token = E::extract_token(parts)
+            .await
+            .inspect_err(|e| tracing::debug!(error=?e))?;
 
         let decoder = Decoder::from_ref(state);
-        let token_data = decoder.decode(&token).await.map_err(map_jwt_error)?;
+        let token_data = decoder
+            .decode(&token)
+            .await
+            .inspect_err(|e| tracing::debug!(error=?e))
+            .map_err(map_jwt_error)?;
 
         Ok(Claims {
             claims: token_data.claims,
